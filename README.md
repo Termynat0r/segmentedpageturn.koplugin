@@ -88,6 +88,13 @@ HWTCON marker/submission path, and the HWTCON update ABI. A passing test is a
 source-level compatibility check; it does not replace a short on-device test
 on each supported display family.
 
+## License
+
+Copyright (C) 2026 Termynat0r.
+
+Segmented page turns is licensed under the GNU Affero General Public License,
+version 3 or any later version (AGPL-3.0-or-later). See [LICENSE](LICENSE.md).
+
 
 ## Inspiration and credits
 

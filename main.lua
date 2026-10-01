@@ -1,3 +1,6 @@
+-- SPDX-FileCopyrightText: 2026 Termynat0r
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 --[[--
 @module koplugin.segmentedpageturn
 
