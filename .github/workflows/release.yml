@@ -1,0 +1,61 @@
+name: Release plugin
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v4
+
+      - name: Build the plugin archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          package="segmentedpageturn.koplugin"
+          archive="${package}.zip"
+          staging="dist/${package}"
+
+          mkdir -p "$staging"
+          cp main.lua _meta.lua README.md LICENSE "$staging/"
+
+          test -f "$staging/main.lua"
+          test -f "$staging/_meta.lua"
+          test -f "$staging/LICENSE"
+
+          (
+            cd dist
+            zip -qr "../$archive" "$package"
+          )
+          sha256sum "$archive" > "${archive}.sha256"
+
+      - name: Verify archive layout
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          archive="segmentedpageturn.koplugin.zip"
+          package="segmentedpageturn.koplugin"
+          entries="$(unzip -Z1 "$archive")"
+
+          test "$(printf '%s\n' "$entries" | cut -d/ -f1 | sort -u)" = "$package"
+          printf '%s\n' "$entries" | grep -qx "${package}/main.lua"
+          printf '%s\n' "$entries" | grep -qx "${package}/_meta.lua"
+          printf '%s\n' "$entries" | grep -qx "${package}/LICENSE"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            segmentedpageturn.koplugin.zip
+            segmentedpageturn.koplugin.zip.sha256
