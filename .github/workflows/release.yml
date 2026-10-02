@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Check out the tagged source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Build the plugin archive
         shell: bash
@@ -26,11 +28,11 @@ jobs:
           staging="dist/${package}"
 
           mkdir -p "$staging"
-          cp main.lua _meta.lua README.md LICENSE "$staging/"
+          cp main.lua _meta.lua README.md LICENSE.md "$staging/"
 
           test -f "$staging/main.lua"
           test -f "$staging/_meta.lua"
-          test -f "$staging/LICENSE"
+          test -f "$staging/LICENSE.md"
 
           (
             cd dist
@@ -50,11 +52,55 @@ jobs:
           test "$(printf '%s\n' "$entries" | cut -d/ -f1 | sort -u)" = "$package"
           printf '%s\n' "$entries" | grep -qx "${package}/main.lua"
           printf '%s\n' "$entries" | grep -qx "${package}/_meta.lua"
-          printf '%s\n' "$entries" | grep -qx "${package}/LICENSE"
+          printf '%s\n' "$entries" | grep -qx "${package}/LICENSE.md"
+
+      - name: Generate release changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          previous_tag="$(git tag --merged "$GITHUB_SHA^" --sort=-version:refname | head -n 1 || true)"
+          if [[ -n "$previous_tag" ]]; then
+            range="${previous_tag}..${GITHUB_SHA}"
+          else
+            range="$GITHUB_SHA"
+          fi
+
+          git log --reverse --format='%s' "$range" > commit-subjects.txt
+
+          emit_section() {
+            local pattern="$1"
+            local heading="$2"
+            local entries
+            entries="$(grep -E "$pattern" commit-subjects.txt | sed -E 's/^[^:]*: //' || true)"
+            if [[ -n "$entries" ]]; then
+              printf '### %s\n\n' "$heading"
+              printf '%s\n' "$entries" | sed 's/^/- /'
+              printf '\n'
+            fi
+          }
+
+          {
+            printf '# Changelog\n\n'
+            printf '## %s\n\n' "$GITHUB_REF_NAME"
+            emit_section '^feat(\([^)]*\))?(!)?: ' 'Features'
+            emit_section '^fix(\([^)]*\))?(!)?: ' 'Fixes'
+            emit_section '^docs(\([^)]*\))?(!)?: ' 'Documentation'
+            emit_section '^test(\([^)]*\))?(!)?: ' 'Tests'
+            emit_section '^ci(\([^)]*\))?(!)?: ' 'Continuous integration'
+            emit_section '^chore(\([^)]*\))?(!)?: ' 'Maintenance'
+
+            other="$(grep -Ev '^(feat|fix|docs|test|ci|chore)(\([^)]*\))?(!)?: ' commit-subjects.txt || true)"
+            if [[ -n "$other" ]]; then
+              printf '### Other changes\n\n'
+              printf '%s\n' "$other" | sed 's/^/- /'
+            fi
+          } > release-changelog.md
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: release-changelog.md
           generate_release_notes: true
           files: |
             segmentedpageturn.koplugin.zip
