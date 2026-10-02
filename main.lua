@@ -10,6 +10,7 @@ turn's single full-screen partial refresh with a sequence of HWTCON bands.
 --]]
 
 local ffi = require("ffi")
+require("ffi/mxcfb_kobo_h")
 local Device = require("device")
 local lfs = require("libs/libkoreader-lfs")
 local UIManager = require("ui/uimanager")
@@ -20,23 +21,13 @@ local _ = require("gettext")
 local Screen = Device.screen
 local C = ffi.C
 
--- Private copies of the Kobo HWTCON ABI. Keeping them in this plugin avoids
--- relying on KOReader's internal HWTCON cdefs or its recycled update object.
-ffi.cdef[[
-struct segmented_hwtcon_rect { unsigned int top; unsigned int left; unsigned int width; unsigned int height; };
-struct segmented_hwtcon_update_data {
-    struct segmented_hwtcon_rect update_region;
-    unsigned int waveform_mode; unsigned int update_mode; unsigned int update_marker;
-    unsigned int flags; int dither_mode;
-};
-]]
-
-local HWTCON_SEND_UPDATE = 1076119086
-local HWTCON_FLAG_CFA_SKIP = 32768
-local HWTCON_WAVEFORM_REAGL = 4
-local HWTCON_WAVEFORM_NIGHT = 9
-local UPDATE_MODE_PARTIAL = 0
-local UPDATE_MODE_FULL = 1
+-- Track the HWTCON ABI exposed by the running KOReader version.
+local HWTCON_SEND_UPDATE = C.HWTCON_SEND_UPDATE
+local HWTCON_FLAG_CFA_SKIP = C.HWTCON_FLAG_CFA_SKIP
+local HWTCON_WAVEFORM_REAGL = C.HWTCON_WAVEFORM_MODE_GLR16
+local HWTCON_WAVEFORM_NIGHT = C.HWTCON_WAVEFORM_MODE_GLKW16
+local UPDATE_MODE_PARTIAL = C.UPDATE_MODE_PARTIAL
+local UPDATE_MODE_FULL = C.UPDATE_MODE_FULL
 
 local function has_hwtcon_backend()
     return Screen.fd ~= nil
@@ -237,7 +228,7 @@ function SegmentedPageTurn:init()
         logger.info("SegmentedPageTurn: inactive; HWTCON backend was not detected")
         return
     end
-    self.update_data = ffi.new("struct segmented_hwtcon_update_data")
+    self.update_data = ffi.new("struct hwtcon_update_data")
     self.update_data.flags = Screen.device:hasColorScreen() and HWTCON_FLAG_CFA_SKIP or 0
     self.update_data.dither_mode = 0
     self.update_data.update_mode = UPDATE_MODE_PARTIAL
