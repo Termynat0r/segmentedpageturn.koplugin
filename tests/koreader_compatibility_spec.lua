@@ -52,6 +52,27 @@ describe("Segmented page turns KOReader compatibility", function()
         assert.are.equal(1600, large[#large])
     end)
 
+    it("uses full updates with non-blocking submission waits for dark-mode bands", function()
+        local instance = plugin:new{}
+        local function wait_for_submission()
+            return 0
+        end
+        local framebuffer = {
+            mech_wait_update_submission = wait_for_submission,
+        }
+
+        local day = instance:getBandUpdateSettings(framebuffer)
+        assert.are.equal(4, day.waveform)
+        assert.are.equal(0, day.update_mode)
+        assert.are.equal(wait_for_submission, day.wait_for_update)
+
+        framebuffer.night_mode = true
+        local night = instance:getBandUpdateSettings(framebuffer)
+        assert.are.equal(9, night.waveform)
+        assert.are.equal(1, night.update_mode)
+        assert.are.equal(wait_for_submission, night.wait_for_update)
+    end)
+
     it("keeps the reader refresh and page-update hook contracts", function()
         assert_contains("base/ffi/framebuffer.lua", "function fb:refreshPartialImp")
         assert_contains("base/ffi/framebuffer.lua", "function fb:afterPaint")
@@ -60,12 +81,14 @@ describe("Segmented page turns KOReader compatibility", function()
         assert_contains("frontend/apps/reader/modules/readerpaging.lua", "function ReaderPaging:onPageUpdate(new_page_no, orig_mode)")
     end)
 
-    it("keeps the MTK HWTCON marker and submission contracts", function()
+    it("keeps the MTK HWTCON refresh contracts", function()
         assert_contains("base/ffi/framebuffer_mxcfb.lua", "function framebuffer:_get_next_marker()")
         assert_contains("base/ffi/framebuffer_mxcfb.lua", "local function kobo_mtk_wait_for_update_submission")
         assert_contains("base/ffi/framebuffer_mxcfb.lua", "self.mech_wait_update_submission = kobo_mtk_wait_for_update_submission")
         assert_contains("base/ffi/framebuffer_mxcfb.lua", "self.waveform_reagl = C.HWTCON_WAVEFORM_MODE_GLR16")
         assert_contains("base/ffi/framebuffer_mxcfb.lua", "self.waveform_partial = self.waveform_reagl")
+        assert_contains("base/ffi/framebuffer_mxcfb.lua", "self.waveform_night = C.HWTCON_WAVEFORM_MODE_GLKW16")
+        assert_contains("base/ffi/framebuffer_mxcfb.lua", "self.night_is_reagl = true")
     end)
 
     it("keeps the HWTCON update ABI mirrored by the plugin", function()

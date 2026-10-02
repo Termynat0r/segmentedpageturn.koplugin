@@ -36,6 +36,7 @@ local HWTCON_FLAG_CFA_SKIP = 32768
 local HWTCON_WAVEFORM_REAGL = 4
 local HWTCON_WAVEFORM_NIGHT = 9
 local UPDATE_MODE_PARTIAL = 0
+local UPDATE_MODE_FULL = 1
 
 local function has_hwtcon_backend()
     return Screen.fd ~= nil
@@ -99,6 +100,16 @@ function SegmentedPageTurn:getBandEdges(width, height, alignment)
     return edges
 end
 
+function SegmentedPageTurn:getBandUpdateSettings(fb)
+    local night_mode = fb.night_mode == true
+    return {
+        waveform = night_mode and HWTCON_WAVEFORM_NIGHT or HWTCON_WAVEFORM_REAGL,
+        update_mode = night_mode and UPDATE_MODE_FULL or UPDATE_MODE_PARTIAL,
+        wait_for_update = fb.mech_wait_update_submission,
+        wait_name = "HWTCON_WAIT_FOR_UPDATE_SUBMISSION",
+    }
+end
+
 -- Reader modules receive PageUpdate for every real page change.  Tracking it
 -- here avoids patching ReaderPaging internals, and also makes this work with
 -- all normal page-turn inputs (tap, swipe, key, and gesture).
@@ -139,7 +150,7 @@ function SegmentedPageTurn:refreshSegmentedPageTurn(fb, x, y, w, h, dither)
         return false
     end
 
-    local waveform = fb.night_mode and HWTCON_WAVEFORM_NIGHT or HWTCON_WAVEFORM_REAGL
+    local update_settings = self:getBandUpdateSettings(fb)
 
     local alignment = fb.alignment_constraint or 1
     local edges = self:getBandEdges(w, h, alignment)
@@ -156,7 +167,8 @@ function SegmentedPageTurn:refreshSegmentedPageTurn(fb, x, y, w, h, dither)
         local rx, ry, rw, rh = bb:getBoundedRect(left, 0, right - left, h, alignment)
         rx, ry, rw, rh = bb:getPhysicalRect(rx, ry, rw, rh)
 
-        self.update_data.waveform_mode = waveform
+        self.update_data.waveform_mode = update_settings.waveform
+        self.update_data.update_mode = update_settings.update_mode
         self.update_data.update_region.left = rx
         self.update_data.update_region.top = ry
         self.update_data.update_region.width = rw
@@ -174,10 +186,13 @@ function SegmentedPageTurn:refreshSegmentedPageTurn(fb, x, y, w, h, dither)
             return false
         end
 
-        if fb:mech_wait_update_submission(marker) == -1 then
+        if update_settings.wait_for_update(fb, marker) == -1 then
             local err = ffi.errno()
-            fb.debug("HWTCON_WAIT_FOR_UPDATE_SUBMISSION ioctl failed:", ffi.string(C.strerror(err)))
+            fb.debug(update_settings.wait_name .. " ioctl failed:", ffi.string(C.strerror(err)))
             return false
+        end
+        if update_settings.update_mode == UPDATE_MODE_FULL then
+            fb.dont_wait_for_marker = marker
         end
     end
     logger.info("SegmentedPageTurn: submitted", #edges - 1, "HWTCON bands")
