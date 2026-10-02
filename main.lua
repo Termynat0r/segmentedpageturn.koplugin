@@ -26,7 +26,6 @@ local HWTCON_SEND_UPDATE = C.HWTCON_SEND_UPDATE
 local HWTCON_FLAG_CFA_SKIP = C.HWTCON_FLAG_CFA_SKIP
 local HWTCON_WAVEFORM_REAGL = C.HWTCON_WAVEFORM_MODE_GLR16
 local HWTCON_WAVEFORM_NIGHT = C.HWTCON_WAVEFORM_MODE_GLKW16
-local UPDATE_MODE_PARTIAL = C.UPDATE_MODE_PARTIAL
 local UPDATE_MODE_FULL = C.UPDATE_MODE_FULL
 
 local function has_hwtcon_backend()
@@ -95,7 +94,7 @@ function SegmentedPageTurn:getBandUpdateSettings(fb)
     local night_mode = fb.night_mode == true
     return {
         waveform = night_mode and HWTCON_WAVEFORM_NIGHT or HWTCON_WAVEFORM_REAGL,
-        update_mode = night_mode and UPDATE_MODE_FULL or UPDATE_MODE_PARTIAL,
+        update_mode = UPDATE_MODE_FULL,
         wait_for_update = fb.mech_wait_update_submission,
         wait_name = "HWTCON_WAIT_FOR_UPDATE_SUBMISSION",
     }
@@ -231,7 +230,7 @@ function SegmentedPageTurn:init()
     self.update_data = ffi.new("struct hwtcon_update_data")
     self.update_data.flags = Screen.device:hasColorScreen() and HWTCON_FLAG_CFA_SKIP or 0
     self.update_data.dither_mode = 0
-    self.update_data.update_mode = UPDATE_MODE_PARTIAL
+    self.update_data.update_mode = UPDATE_MODE_FULL
     active_plugin = self
     install_hooks()
     self.ui.menu:registerToMainMenu(self)

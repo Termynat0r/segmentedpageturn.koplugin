@@ -52,7 +52,7 @@ describe("Segmented page turns KOReader compatibility", function()
         assert.are.equal(1600, large[#large])
     end)
 
-    it("uses full updates with non-blocking submission waits for dark-mode bands", function()
+    it("uses full updates with non-blocking submission waits for all page-turn bands", function()
         local instance = plugin:new{}
         local function wait_for_submission()
             return 0
@@ -63,7 +63,7 @@ describe("Segmented page turns KOReader compatibility", function()
 
         local day = instance:getBandUpdateSettings(framebuffer)
         assert.are.equal(4, day.waveform)
-        assert.are.equal(0, day.update_mode)
+        assert.are.equal(1, day.update_mode)
         assert.are.equal(wait_for_submission, day.wait_for_update)
 
         framebuffer.night_mode = true
