@@ -1,0 +1,26 @@
+# macOS Finder metadata
+.DS_Store
+.AppleDouble
+._*
+
+# Editor files
+*~
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Lua test and coverage output
+.luacov
+luacov.stats.out
+luacov.report.out
+
+# Locally generated release artifacts
+dist/
+*.zip
+*.zip.sha256
+commit-subjects.txt
+release-changelog.md
+
+# Local test runner state
+spec/run/
