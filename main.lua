@@ -4,7 +4,7 @@
 --[[--
 @module koplugin.segmentedpageturn
 
-Implements NickelDissolve-style page turns without changing KOReader core:
+Implements animated page turns without changing KOReader core:
 the plugin arms itself after an ordinary one-page turn, then replaces that
 turn's single full-screen partial refresh with a sequence of HWTCON bands.
 --]]
