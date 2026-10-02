@@ -79,8 +79,8 @@ function SegmentedPageTurn:getBandEdges(width, height, alignment)
         return cache.edges
     end
 
-    -- Match NickelDissolve's automatic defaults.
-    local strips = math.max(width, height) >= 1600 and 12 or 10
+    -- Keep each band close to 105 display pixels wide.
+    local strips = math.floor(width / 105 + 0.5)
     local edges = build_band_edges(width, strips, alignment)
     self.band_edge_cache = {
         width = width,
