@@ -73,6 +73,36 @@ describe("Segmented page turns KOReader compatibility", function()
         assert.are.equal(wait_for_submission, night.wait_for_update)
     end)
 
+    it("keeps color content on KOReader's Kaleido refresh path", function()
+        local Blitbuffer = require("ffi/blitbuffer")
+        local instance = plugin:new{}
+        local bb = Blitbuffer.new(2, 1, Blitbuffer.TYPE_BBRGB32)
+        local framebuffer = {
+            device = {
+                hasKaleidoWfm = function()
+                    return true
+                end,
+            },
+            isColorEnabled = function()
+                return true
+            end,
+            bb = bb,
+        }
+
+        bb:setPixel(0, 0, Blitbuffer.ColorRGB32(32, 32, 32, 255))
+        bb:setPixel(1, 0, Blitbuffer.ColorRGB32(196, 196, 196, 255))
+        assert.is_false(instance:isColorContentUpdate(framebuffer))
+
+        bb:setPixel(1, 0, Blitbuffer.ColorRGB32(196, 96, 32, 255))
+        assert.is_true(instance:isColorContentUpdate(framebuffer))
+
+        framebuffer.isColorEnabled = function()
+            return false
+        end
+        assert.is_false(instance:isColorContentUpdate(framebuffer))
+        bb:free()
+    end)
+
     it("keeps the reader refresh and page-update hook contracts", function()
         assert_contains("base/ffi/framebuffer.lua", "function fb:refreshPartialImp")
         assert_contains("base/ffi/framebuffer.lua", "function fb:afterPaint")

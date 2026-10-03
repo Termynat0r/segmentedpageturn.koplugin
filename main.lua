@@ -20,6 +20,7 @@ local _ = require("gettext")
 
 local Screen = Device.screen
 local C = ffi.C
+local uint8pt = ffi.typeof("const uint8_t*")
 
 -- Track the HWTCON ABI exposed by the running KOReader version.
 local HWTCON_SEND_UPDATE = C.HWTCON_SEND_UPDATE
@@ -100,6 +101,48 @@ function SegmentedPageTurn:getBandUpdateSettings(fb)
     }
 end
 
+-- Kaleido uses an RGB framebuffer.  Dithering is merely a rendering hint, so
+-- determine whether the painted page actually contains color by checking its
+-- red, green, and blue channels.  The page-turn candidate is full-screen, so
+-- scanning the active framebuffer covers precisely the pending update.
+function SegmentedPageTurn:isColorContentUpdate(fb)
+    if not (fb.device:hasKaleidoWfm() and fb:isColorEnabled()) then
+        return false
+    end
+    local bb = fb.bb
+    if not bb:isRGB() then
+        return false
+    end
+    local bytes_per_pixel = bb:getBytesPerPixel()
+
+    -- Color Kobo devices use BBRGB32.  Scan its native storage directly to
+    -- avoid allocating a copy or creating a Lua Color object per pixel.
+    if bytes_per_pixel >= 3 then
+        local data = ffi.cast(uint8pt, bb.data)
+        for y = 0, bb.h - 1 do
+            local row = data + bb.stride * y
+            for x = 0, bb.w - 1 do
+                local pixel = row + bytes_per_pixel * x
+                if pixel[0] ~= pixel[1] or pixel[1] ~= pixel[2] then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
+    -- Retain correctness should a future color device expose RGB565 instead.
+    for y = 0, bb:getHeight() - 1 do
+        for x = 0, bb:getWidth() - 1 do
+            local pixel = bb:getPixel(x, y):getColorRGB32()
+            if pixel.r ~= pixel.g or pixel.g ~= pixel.b then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 -- Reader modules receive PageUpdate for every real page change.  Tracking it
 -- here avoids patching ReaderPaging internals, and also makes this work with
 -- all normal page-turn inputs (tap, swipe, key, and gesture).
@@ -133,6 +176,10 @@ function SegmentedPageTurn:refreshSegmentedPageTurn(fb, x, y, w, h, dither)
     end
     if #UIManager._refresh_stack ~= 1 then
         logger.info("SegmentedPageTurn: discarded pending turn; refresh queue has", #UIManager._refresh_stack, "entries")
+        return false
+    end
+    if self:isColorContentUpdate(fb) then
+        logger.info("SegmentedPageTurn: discarded pending turn; color content needs KOReader's Kaleido waveform")
         return false
     end
     if dither or x ~= 0 or y ~= 0 or w ~= fb.bb:getWidth() or h ~= fb.bb:getHeight() then
