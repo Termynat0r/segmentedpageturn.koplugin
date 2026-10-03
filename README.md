@@ -29,7 +29,7 @@ The following compatibility targets have been tested (1 October 2026):
 
 - **KOReader v2026.07.2**
 - **ZenOS v3.3.1**
-- **Kobo Clara Colour** (colour e-ink)
+- **Kobo Clara Colour** (color e-ink)
 
 ## Installation and use
 
@@ -42,6 +42,32 @@ The following compatibility targets have been tested (1 October 2026):
 The switch is KOReader's existing `swipe_animations` setting. The plugin adds
 the same control to the Page turns menu when it is active; disabling it returns
 page turns to KOReader's normal refresh behavior.
+
+### Color content
+
+On Kaleido color e-ink devices, the plugin deliberately disables the
+segmented animation for a page containing color content. The display driver
+needs to process the color filter array across the complete update region;
+revealing the page in separate bands can otherwise cause visible seams and
+color artefacts. Such pages therefore use KOReader's normal color refresh
+path instead of the animation.
+
+### Recommended refresh settings
+
+For the best balance of image quality and refresh speed, configure KOReader's
+full-page refresh setting to **Flash on chapter boundaries** and enable
+**Always flash on pages with images**. Also enable **Dithering** in the font
+menu. These settings ensure that image-heavy and color pages receive an
+appropriate high-quality refresh, while ordinary greyscale text pages can use
+the segmented animation.
+
+To change the full-refresh settings while reading, open the main menu and go
+to **Screen** → **E-ink settings** → **Full refresh rate**. Enable **Always
+flash on chapter boundaries** and **Always flash on pages with images** there.
+To enable dithering, open the reader's **Font** menu, find **Dithering**, and
+switch it on. Dithering lets KOReader identify pages containing images and
+request the appropriate image-refresh path. On devices with hardware
+dithering support, this enables hardware dithering for the current document.
 
 ## How it works
 
