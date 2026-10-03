@@ -26,6 +26,7 @@ local uint8pt = ffi.typeof("const uint8_t*")
 local HWTCON_SEND_UPDATE = C.HWTCON_SEND_UPDATE
 local HWTCON_FLAG_CFA_SKIP = C.HWTCON_FLAG_CFA_SKIP
 local HWTCON_WAVEFORM_REAGL = C.HWTCON_WAVEFORM_MODE_GLR16
+local HWTCON_WAVEFORM_KALEIDO_REAGL = C.HWTCON_WAVEFORM_MODE_GCK16
 local HWTCON_WAVEFORM_NIGHT = C.HWTCON_WAVEFORM_MODE_GLKW16
 local UPDATE_MODE_PARTIAL = C.UPDATE_MODE_PARTIAL
 
@@ -94,7 +95,10 @@ end
 function SegmentedPageTurn:getBandUpdateSettings(fb)
     local night_mode = fb.night_mode == true
     return {
-        waveform = night_mode and HWTCON_WAVEFORM_NIGHT or HWTCON_WAVEFORM_REAGL,
+        waveform = night_mode and HWTCON_WAVEFORM_NIGHT
+            or (fb.device and fb.device:hasColorScreen()
+                and HWTCON_WAVEFORM_KALEIDO_REAGL
+                or HWTCON_WAVEFORM_REAGL),
         update_mode = UPDATE_MODE_PARTIAL,
         wait_for_update = fb.mech_wait_update_submission,
         wait_name = "HWTCON_WAIT_FOR_UPDATE_SUBMISSION",

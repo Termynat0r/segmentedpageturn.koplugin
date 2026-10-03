@@ -66,6 +66,14 @@ describe("Segmented page turns KOReader compatibility", function()
         assert.are.equal(1, day.update_mode)
         assert.are.equal(wait_for_submission, day.wait_for_update)
 
+        framebuffer.device = {
+            hasColorScreen = function()
+                return true
+            end,
+        }
+        local color = instance:getBandUpdateSettings(framebuffer)
+        assert.are.equal(8, color.waveform)
+
         framebuffer.night_mode = true
         local night = instance:getBandUpdateSettings(framebuffer)
         assert.are.equal(9, night.waveform)
