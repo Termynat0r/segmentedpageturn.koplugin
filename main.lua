@@ -16,6 +16,8 @@ local lfs = require("libs/libkoreader-lfs")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local logger = require("logger")
+local Dispatcher = require("dispatcher")
+local Notification = require("ui/widget/notification")
 local _ = require("gettext")
 
 local Screen = Device.screen
@@ -166,7 +168,7 @@ function SegmentedPageTurn:onPageUpdate(new_page, orig_mode)
         forward = not forward
     end
     self:arm(forward)
-    logger.info("SegmentedPageTurn: armed", forward and "forward" or "backward", "page turn")
+    logger.dbg("SegmentedPageTurn: armed", forward and "forward" or "backward", "page turn")
 end
 
 function SegmentedPageTurn:refreshSegmentedPageTurn(fb, x, y, w, h, dither)
@@ -175,19 +177,19 @@ function SegmentedPageTurn:refreshSegmentedPageTurn(fb, x, y, w, h, dither)
         return false
     end
     if not self:isEnabled() then
-        logger.info("SegmentedPageTurn: discarded pending turn; animation setting is off")
+        logger.dbg("SegmentedPageTurn: discarded pending turn; animation setting is off")
         return false
     end
     if #UIManager._refresh_stack ~= 1 then
-        logger.info("SegmentedPageTurn: discarded pending turn; refresh queue has", #UIManager._refresh_stack, "entries")
+        logger.dbg("SegmentedPageTurn: discarded pending turn; refresh queue has", #UIManager._refresh_stack, "entries")
         return false
     end
     if self:isColorContentUpdate(fb) then
-        logger.info("SegmentedPageTurn: discarded pending turn; color content needs KOReader's Kaleido waveform")
+        logger.dbg("SegmentedPageTurn: discarded pending turn; color content needs KOReader's Kaleido waveform")
         return false
     end
     if dither or x ~= 0 or y ~= 0 or w ~= fb.bb:getWidth() or h ~= fb.bb:getHeight() then
-        logger.info("SegmentedPageTurn: discarded pending turn; refresh is not a plain full-screen partial update")
+        logger.dbg("SegmentedPageTurn: discarded pending turn; refresh is not a plain full-screen partial update")
         return false
     end
 
@@ -236,7 +238,7 @@ function SegmentedPageTurn:refreshSegmentedPageTurn(fb, x, y, w, h, dither)
             fb.dont_wait_for_marker = marker
         end
     end
-    logger.info("SegmentedPageTurn: submitted", #edges - 1, "HWTCON bands")
+    logger.dbg("SegmentedPageTurn: submitted", #edges - 1, "HWTCON bands")
     return true
 end
 
@@ -284,6 +286,7 @@ function SegmentedPageTurn:init()
     active_plugin = self
     install_hooks()
     self.ui.menu:registerToMainMenu(self)
+    self:onDispatcherRegisterActions()
     logger.info("SegmentedPageTurn: initialized; HWTCON backend detected")
 end
 
@@ -308,6 +311,21 @@ function SegmentedPageTurn:addToMainMenu(menu_items)
             G_reader_settings:flipNilOrFalse("swipe_animations")
         end,
     })
+end
+
+function SegmentedPageTurn:onDispatcherRegisterActions()
+    Dispatcher:registerAction("toggle_segmented_page_turn", {
+        category = "none",
+        event = "ToggleSegmentedPageTurn",
+        title = "SegmentedPageTurn: " .. _("Toggle page turn animations"),
+        reader = true,
+        condition = has_hwtcon_backend()
+    })
+end
+
+function SegmentedPageTurn:onToggleSegmentedPageTurn()
+    G_reader_settings:flipNilOrFalse("swipe_animations")
+    Notification:notify(_("Toggle page turn animations"))
 end
 
 return SegmentedPageTurn
